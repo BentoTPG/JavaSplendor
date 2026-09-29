@@ -7,5 +7,6 @@ public class Main extends Game {
     @Override
     public void create() {
         setScreen(new FirstScreen());
+        System.out.println("1");
     }
 }

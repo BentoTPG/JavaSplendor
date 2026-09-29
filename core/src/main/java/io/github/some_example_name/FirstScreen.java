@@ -1,17 +1,66 @@
 package io.github.some_example_name;
 
+import com.badlogic.gdx.Gdx;
+import com.badlogic.gdx.Input;
 import com.badlogic.gdx.Screen;
+import com.badlogic.gdx.graphics.GL20;
+import com.badlogic.gdx.graphics.g2d.BitmapFont;
+import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 
 /** First screen of the application. Displayed after the application is created. */
 public class FirstScreen implements Screen {
+	private SpriteBatch batch;
+    private BitmapFont font;
+    private Game game;
+    private GameManager manager;
     @Override
     public void show() {
-        // Prepare your screen here.
+    	batch = new SpriteBatch();
+        font = new BitmapFont();
+
+        game = new Game();
+        manager = new GameManager(game);
     }
 
     @Override
     public void render(float delta) {
-        // Draw your screen here. "delta" is the time since last render in seconds.
+    	Gdx.gl.glClearColor(0, 0, 0, 1);
+        Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT);
+
+        if (Gdx.input.isKeyJustPressed(Input.Keys.SPACE)) {
+            manager.takeRedGem();
+        }
+
+        if (Gdx.input.isKeyJustPressed(Input.Keys.ENTER)) {
+            manager.endTurn();
+        }
+
+        Player player = game.getCurrentPlayer();
+
+        batch.begin();
+
+        font.draw(batch,
+                "Player: " + player.getName(),
+                50, 400);
+
+        font.draw(batch,
+                "Red Gem: " + player.getGems().getRedGem(),
+                50, 360);
+
+        font.draw(batch,
+                "Board Red Gem: "
+                + game.getBoard().getGems().getRedGem(),
+                50, 320);
+
+        font.draw(batch,
+                "SPACE = Take Red Gem",
+                50, 260);
+
+        font.draw(batch,
+                "ENTER = End Turn",
+                50, 230);
+
+        batch.end();
     }
 
     @Override
