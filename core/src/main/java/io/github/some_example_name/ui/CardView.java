@@ -22,6 +22,7 @@ public class CardView extends Stack {
         new Color(0.30f, 0.38f, 0.30f, 1), new Color(0.38f, 0.34f, 0.24f, 1), new Color(0.28f, 0.30f, 0.42f, 1)
     };
     public final Card card;
+    public Runnable onClick;      // set by the screen; runs when the card is clicked
 
     public CardView(Card card, Label.LabelStyle big, Label.LabelStyle small) {
         this.card = card;
@@ -47,7 +48,7 @@ public class CardView extends Stack {
         setTransform(true);                                        // needed for the hover scale
         addListener(new ClickListener() {
             @Override public void clicked(InputEvent e, float x, float y) {
-                System.out.println("clicked tier " + card.tier + " bonus " + card.bonus);
+                if (onClick != null) onClick.run();
             }
             @Override public void enter(InputEvent e, float x, float y, int p, Actor from) {
                 if (p != -1) return;
