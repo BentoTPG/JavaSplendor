@@ -2,6 +2,8 @@ package io.github.some_example_name.model;
 
 import java.util.Map;
 
+import com.badlogic.gdx.utils.Array;
+
 /** Turn rules. One action per turn, then endTurn(). All action methods return false if illegal. */
 public class GameManager {
     public static final int MAX_TOKENS = 10;
@@ -9,6 +11,7 @@ public class GameManager {
 
     public final GameState state;
     private boolean acted;
+    private boolean nobleClaimed;       // a noble was already taken this turn
 
     public GameManager(GameState state) { this.state = state; }
 
@@ -47,6 +50,7 @@ public class GameManager {
 
     // ---- cards ----
 
+    /** Works for a face-up card or one of the current player's reserved cards. */
     public boolean canBuyCard(Card card) {
         if (acted || state.gameOver) return false;
         Player p = state.current();
@@ -89,17 +93,55 @@ public class GameManager {
 
     // ---- turn flow ----
 
-    /** Ends the turn: awards a noble, checks game over, advances. Fails if no action yet or >10 tokens held. */
+    /** Nobles the current player qualifies for right now. */
+    public Array<Noble> getAvailableNobles() {
+        Array<Noble> result = new Array<>();
+        for (Noble n : state.nobles) if (n.isAvailable(state.current())) result.add(n);
+        return result;
+    }
+
+    /** Choose which noble to receive when the player qualifies for several. One noble per turn. */
+    public boolean claimNoble(Noble noble) {
+        if (nobleClaimed || !getAvailableNobles().contains(noble, true)) return false;
+        state.nobles.removeValue(noble, true);
+        state.current().addNoble(noble);
+        nobleClaimed = true;
+        return true;
+    }
+
+    /** True if the player has an action available: take tokens, reserve, or buy. */
+    public boolean canAct() {
+        if (state.gameOver) return false;
+        for (Gem g : Gem.BASIC) if (state.bank.get(g) > 0) return true;
+        if (canReserveCard()) {
+            for (Array<Card> row : state.market) if (row.size > 0) return true;
+            for (Array<Card> deck : state.decks) if (deck.size > 0) return true;
+        }
+        Player p = state.current();
+        for (Array<Card> row : state.market) for (Card c : row) if (c.isBuyable(p)) return true;
+        for (Card c : p.reserved) if (c.isBuyable(p)) return true;
+        return false;
+    }
+
+    /** Skip the turn. Only allowed when the player cannot do anything else. */
+    public boolean pass() {
+        if (acted || canAct()) return false;
+        acted = true;
+        return endTurn();
+    }
+
+    /**
+     * Ends the turn: awards a noble, checks game over, advances.
+     * Fails if no action yet, more than 10 tokens held, or a noble must still be chosen (2+ available).
+     */
     public boolean endTurn() {
         Player p = state.current();
         if (!acted || state.gameOver || p.totalTokens() > MAX_TOKENS) return false;
 
-        for (Noble n : state.nobles) {
-            if (n.isAvailable(p)) {
-                state.nobles.removeValue(n, true);
-                p.addNoble(n);
-                break;                                    // one noble per turn
-            }
+        if (!nobleClaimed) {
+            Array<Noble> available = getAvailableNobles();
+            if (available.size > 1) return false;        // player must call claimNoble first
+            if (available.size == 1) claimNoble(available.first());
         }
         if (p.score() >= GameState.WIN_POINTS) state.finalRound = true;
         if (state.currentPlayer == state.players.size - 1 && state.finalRound) {
@@ -108,6 +150,7 @@ public class GameManager {
             state.currentPlayer = (state.currentPlayer + 1) % state.players.size;
         }
         acted = false;
+        nobleClaimed = false;
         return true;
     }
 
