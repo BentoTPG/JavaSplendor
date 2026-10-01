@@ -104,4 +104,40 @@ public class Gem {
     public int getGoldGem() {
         return goldGem;
     }
+
+    // ---- access by color name: red, blue, green, white, black, gold ----
+    public int get(String color) {
+        switch (color.toLowerCase()) {
+            case "red": return redGem;
+            case "blue": return blueGem;
+            case "green": return greenGem;
+            case "white": return whiteGem;
+            case "black": return blackGem;
+            case "gold": return goldGem;
+            default: throw new IllegalArgumentException("Unknown color: " + color);
+        }
+    }
+
+    public void add(String color, int amount) {
+        switch (color.toLowerCase()) {
+            case "red": redGem += amount; break;
+            case "blue": blueGem += amount; break;
+            case "green": greenGem += amount; break;
+            case "white": whiteGem += amount; break;
+            case "black": blackGem += amount; break;
+            case "gold": goldGem += amount; break;
+            default: throw new IllegalArgumentException("Unknown color: " + color);
+        }
+    }
+
+    public void remove(String color, int amount) {
+        if (get(color) < amount) {
+            throw new IllegalStateException("Not enough " + color + " gems");
+        }
+        add(color, -amount);
+    }
+
+    public int total() {
+        return redGem + blueGem + greenGem + whiteGem + blackGem + goldGem;
+    }
 }
