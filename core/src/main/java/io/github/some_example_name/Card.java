@@ -39,4 +39,16 @@ public class Card {
         return cardCost;
     }
 
+    // true if the player can pay (after bonuses, with gold as wildcard)
+    public boolean isBuyable(Player player) {
+        int goldNeeded = 0;
+        for (String color : new String[] {"red", "blue", "green", "white", "black"}) {
+            int need = cardCost.get(color) - player.getBonus(color);
+            int shortfall = need - player.getGems().get(color);
+            if (shortfall > 0) {
+                goldNeeded += shortfall;
+            }
+        }
+        return goldNeeded <= player.getGems().getGoldGem();
+    }
 }

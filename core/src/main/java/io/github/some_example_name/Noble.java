@@ -55,4 +55,13 @@ public class Noble {
     public int getBlackRequirement() {
         return blackRequirement;
     }
+
+    // true if the player's card bonuses meet every requirement
+    public boolean isAvailable(Player player) {
+        return player.getBonus("red") >= redRequirement
+            && player.getBonus("blue") >= blueRequirement
+            && player.getBonus("green") >= greenRequirement
+            && player.getBonus("white") >= whiteRequirement
+            && player.getBonus("black") >= blackRequirement;
+    }
 }
