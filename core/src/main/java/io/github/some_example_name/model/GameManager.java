@@ -8,12 +8,36 @@ import com.badlogic.gdx.utils.Array;
 public class GameManager {
     public static final int MAX_TOKENS = 10;
     public static final int MAX_RESERVED = 3;
+    public static final int HEAVY_TOKENS = 7;       // holding this many at turn start => must buy a card
+    public static final int HEAVY_DISCARD = 4;      // ...or discard this many tokens
 
     public final GameState state;
     private boolean acted;
     private boolean nobleClaimed;       // a noble was already taken this turn
+    private boolean bought;             // the action this turn was buying a card
+    private boolean heavyAtStart;       // player held HEAVY_TOKENS+ when the turn began
+    private int discarded;              // tokens returned this turn
 
-    public GameManager(GameState state) { this.state = state; }
+    public GameManager(GameState state) {
+        this.state = state;
+        heavyAtStart = state.current().totalTokens() >= HEAVY_TOKENS;
+    }
+
+    /** Tokens the player still has to return before the turn can end (heavy-hand penalty and the 10 limit). */
+    public int tokensToDiscard() {
+        // Rule 1: started the turn with 7+ tokens and did not buy a card -> discard 4 (minus any already returned)
+        int owedByPenalty = 0;
+        boolean mustPay = acted && heavyAtStart && !bought;
+        if (mustPay) {
+            owedByPenalty = HEAVY_DISCARD - discarded;
+        }
+
+        // Rule 2: holding more than 10 tokens -> discard the excess
+        int owedByLimit = state.current().totalTokens() - MAX_TOKENS;
+
+        // Take the larger of the two (one discard counts toward both rules); never negative
+        return Math.max(0, Math.max(owedByPenalty, owedByLimit));
+    }
 
     public boolean hasActed() { return acted; }
 
@@ -45,6 +69,7 @@ public class GameManager {
         if (p.tokenCount(g) < 1) return false;
         p.removeToken(g, 1);
         state.bank.put(g, state.bank.get(g) + 1);
+        discarded++;
         return true;
     }
 
@@ -66,6 +91,7 @@ public class GameManager {
         }
         if (!p.reserved.removeValue(card, true)) removeFromMarket(card);
         p.addCard(card);
+        bought = true;
         acted = true;
         return true;
     }
@@ -127,16 +153,18 @@ public class GameManager {
     public boolean pass() {
         if (acted || canAct()) return false;
         acted = true;
+        bought = true;                                   // nothing was possible, so no penalty
         return endTurn();
     }
 
     /**
      * Ends the turn: awards a noble, checks game over, advances.
-     * Fails if no action yet, more than 10 tokens held, or a noble must still be chosen (2+ available).
+     * Fails if no action yet, tokens still owed (over 10, or started with 7+ and did not buy: discard 4),
+     * or a noble must still be chosen (2+ available).
      */
     public boolean endTurn() {
         Player p = state.current();
-        if (!acted || state.gameOver || p.totalTokens() > MAX_TOKENS) return false;
+        if (!acted || state.gameOver || tokensToDiscard() > 0) return false;
 
         if (!nobleClaimed) {
             Array<Noble> available = getAvailableNobles();
@@ -151,6 +179,9 @@ public class GameManager {
         }
         acted = false;
         nobleClaimed = false;
+        bought = false;
+        discarded = 0;
+        heavyAtStart = state.current().totalTokens() >= HEAVY_TOKENS;
         return true;
     }
 
