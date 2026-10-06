@@ -6,7 +6,7 @@ public enum Gem {
     WHITE(0.92f, 0.92f, 0.95f), BLUE(0.20f, 0.45f, 0.90f), GREEN(0.15f, 0.70f, 0.35f),
     RED(0.85f, 0.20f, 0.20f),   BLACK(0.15f, 0.15f, 0.18f), GOLD(0.95f, 0.78f, 0.15f);
 
-    /** The five colours that appear on cards (everything except GOLD). */
+    // The 5 normal colours (all except GOLD).
     public static final Gem[] BASIC = {WHITE, BLUE, GREEN, RED, BLACK};
 
     public final Color color;
