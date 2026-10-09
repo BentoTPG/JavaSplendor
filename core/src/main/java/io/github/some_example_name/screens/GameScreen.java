@@ -1,5 +1,8 @@
 package io.github.some_example_name.screens;
 
+import java.util.EnumMap;
+import java.util.Map;
+
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.ScreenAdapter;
 import com.badlogic.gdx.graphics.Color;
@@ -17,7 +20,9 @@ import io.github.some_example_name.data.CardInfo;
 import io.github.some_example_name.data.DrawPile;
 import io.github.some_example_name.data.NobleInfo;
 import io.github.some_example_name.ui.CardView;
+import io.github.some_example_name.model.Gem;
 import io.github.some_example_name.ui.DeckView;
+import io.github.some_example_name.ui.GemBankView;
 import io.github.some_example_name.ui.Gfx;
 import io.github.some_example_name.ui.NobleView;
 
@@ -30,6 +35,9 @@ public class GameScreen extends ScreenAdapter {
     public static final int FACE_UP_PER_LEVEL = 3;
     /** Nobles shown in the noble column. The last tile of the column is the "nobles left" tile. */
     public static final int NOBLES_SHOWN = 3;
+
+    /** Gems in the bank at the start of a 4-player game: 7 of each colour, 5 gold. Placeholder until the backend owns it. */
+    public static final int BANK_PER_COLOUR = 7, BANK_GOLD = 5;
 
     private static final boolean DEBUG_LAYOUT = false;      // true draws the outline of every cell
 
@@ -48,7 +56,8 @@ public class GameScreen extends ScreenAdapter {
 
         Table content = new Table();
         content.add(buildMarket(catalog));
-        content.add(buildNobles(catalog)).padLeft(60);
+        content.add(buildGemBank()).padLeft(40);
+        content.add(buildNobles(catalog)).padLeft(40);
 
         Table root = new Table();
         root.setFillParent(true);
@@ -72,6 +81,13 @@ public class GameScreen extends ScreenAdapter {
             market.row();
         }
         return market;
+    }
+
+    /** The gem deck between the card rows and the nobles: every gem with the number left in the bank. */
+    private GemBankView buildGemBank() {
+        Map<Gem, Integer> bank = new EnumMap<Gem, Integer>(Gem.class);
+        for (Gem gem : Gem.values()) bank.put(gem, gem == Gem.GOLD ? BANK_GOLD : BANK_PER_COLOUR);
+        return new GemBankView(bank, big);
     }
 
     /** Rows 1 to 3 = nobles drawn from the pile, last row = nobles left. */

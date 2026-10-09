@@ -18,15 +18,15 @@ import io.github.some_example_name.model.Gem;
 /**
  * Gem pictures made by the art team.
  *
- * <p>Put one image per gem in <code>assets/gems/</code>, named after the gem in lower case:
- * white.png, blue.png, green.png, red.png, black.png and gold.png.
- * A gem without an image is drawn as a plain coloured disc, so the game runs before the art is ready.
+ * <p>One image per gem sits in <code>assets/</code>: gem_white.png, gem_blue.png, gem_green.png,
+ * gem_red.png, gem_black.png and gem_gold.png. To swap the art, replace the file with the same name.
+ * A gem without an image is drawn as a plain coloured disc, so the game still runs.
  */
 public final class GemIcons {
     private GemIcons() {}
 
     public static String path(Gem gem) {
-        return "gems/" + gem.name().toLowerCase(Locale.ROOT) + ".png";
+        return "gem_" + gem.name().toLowerCase(Locale.ROOT) + ".png";
     }
 
     /** The picture for a gem, or a coloured disc of fallbackSize pixels when there is no picture yet. */
