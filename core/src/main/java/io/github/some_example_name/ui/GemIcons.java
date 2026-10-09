@@ -40,7 +40,7 @@ public final class GemIcons {
     public static Actor chip(Gem gem, int amount, int iconSize, Label.LabelStyle style) {
         Image icon = new Image(of(gem, iconSize));
         icon.setScaling(Scaling.fit);
-        Label number = new OutlinedLabel("" + amount, style, 2f);
+        Label number = new OutlinedLabel("" + amount, style, 1f);
         number.setAlignment(Align.center);
         return new Stack(icon, number);
     }

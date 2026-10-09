@@ -18,7 +18,7 @@ public class GemSlot extends ClickableStack {
 
         Image icon = new Image(GemIcons.of(gem, 96));
         icon.setScaling(Scaling.fit);
-        count = new OutlinedLabel("" + remaining, big, 3f);
+        count = new OutlinedLabel("" + remaining, big, 1f);
 
         Table row = new Table();
         row.add(icon).size(92).padRight(10);

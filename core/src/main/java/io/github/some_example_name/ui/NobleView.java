@@ -25,7 +25,7 @@ public class NobleView extends ClickableStack {
 
         Table ui = new Table();                                                 // layer 1: points and requirements
         ui.pad(8);
-        ui.add(new OutlinedLabel("" + noble.points, big, 3f)).expand().top().left().row();
+        ui.add(new OutlinedLabel("" + noble.points, big, 1f)).expand().top().left().row();
 
         Table requires = new Table();
         for (Map.Entry<Gem, Integer> e : noble.requires.entrySet()) {

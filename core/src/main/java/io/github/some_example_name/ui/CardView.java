@@ -28,7 +28,7 @@ public class CardView extends ClickableStack {
 
         Table ui = new Table();                                                 // layer 1: points, bonus and prices
         ui.pad(8);
-        ui.add(new OutlinedLabel(card.points > 0 ? "" + card.points : "", big, 3f))
+        ui.add(new OutlinedLabel(card.points > 0 ? "" + card.points : "", big, 1f))
           .expandX().top().left();
         Image bonus = new Image(GemIcons.of(card.bonus, 64));
         bonus.setScaling(Scaling.fit);

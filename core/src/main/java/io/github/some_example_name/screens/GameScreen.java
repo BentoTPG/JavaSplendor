@@ -25,6 +25,7 @@ import io.github.some_example_name.ui.DeckView;
 import io.github.some_example_name.ui.GemBankView;
 import io.github.some_example_name.ui.Gfx;
 import io.github.some_example_name.ui.NobleView;
+import io.github.some_example_name.ui.Fonts;
 
 /**
  * Show-only board: three rows of cards (level 3, 2, 1) and a column of nobles on their right.
@@ -34,7 +35,7 @@ public class GameScreen extends ScreenAdapter {
     /** Face-up cards in each row. The first column of the row is the "cards left" tile. */
     public static final int FACE_UP_PER_LEVEL = 3;
     /** Nobles shown in the noble column. The last tile of the column is the "nobles left" tile. */
-    public static final int NOBLES_SHOWN = 3;
+    public static final int NOBLES_SHOWN = 4;
 
     /** Gems in the bank at the start of a 4-player game: 7 of each colour, 5 gold. Placeholder until the backend owns it. */
     public static final int BANK_PER_COLOUR = 7, BANK_GOLD = 5;
@@ -42,15 +43,16 @@ public class GameScreen extends ScreenAdapter {
     private static final boolean DEBUG_LAYOUT = false;      // true draws the outline of every cell
 
     private final Stage stage = new Stage(new FitViewport(1920, 1080));
-    private final BitmapFont bigFont = new BitmapFont(), smallFont = new BitmapFont();
+    private final BitmapFont bigFont = Fonts.createBigNumberFont();
+    private final BitmapFont smallFont = Fonts.createSmallNumberFont();
     private final Label.LabelStyle big, small;
 
     public GameScreen(CardCatalog catalog) {
         Gdx.input.setInputProcessor(stage);
-        bigFont.getData().setScale(3.5f);
-        smallFont.getData().setScale(2f);
-        bigFont.getRegion().getTexture().setFilter(Texture.TextureFilter.Linear, Texture.TextureFilter.Linear);
-        smallFont.getRegion().getTexture().setFilter(Texture.TextureFilter.Linear, Texture.TextureFilter.Linear);
+       
+        
+       
+        
         big = new Label.LabelStyle(bigFont, Color.WHITE);
         small = new Label.LabelStyle(smallFont, Color.WHITE);
 
@@ -97,7 +99,7 @@ public class GameScreen extends ScreenAdapter {
         for (NobleInfo noble : shown) {
             nobles.add(new NobleView(noble, big, small)).size(NobleView.SIZE).pad(8).row();
         }
-        nobles.add(new DeckView("Nobles", catalog.nobles.size(), big, small)).size(NobleView.SIZE).pad(8);
+        //nobles.add(new DeckView("Nobles", catalog.nobles.size(), big, small)).size(NobleView.SIZE).pad(8);
         return nobles;
     }
 

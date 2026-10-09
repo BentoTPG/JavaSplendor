@@ -13,8 +13,8 @@ public class DeckView extends Stack {
 
         Table ui = new Table();
         ui.pad(8);
-        ui.add(new OutlinedLabel(caption, small, 2f)).top().left().row();
-        ui.add(new OutlinedLabel("" + remaining, big, 3f)).expand().center();
+        ui.add(new OutlinedLabel(caption, small, 1f)).top().left().row();
+        ui.add(new OutlinedLabel("" + remaining, big, 1f)).expand().center();
         add(ui);
     }
 }
