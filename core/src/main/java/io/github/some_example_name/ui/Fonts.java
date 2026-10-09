@@ -52,4 +52,21 @@ public final class Fonts {
             gen.dispose();
         }
     }
+
+    /** Captions such as "Gems", "Cards", "Reserved" and "Total" on the player panels. */
+    public static BitmapFont createCaptionFont() {
+        FreeTypeFontGenerator gen = new FreeTypeFontGenerator(Gdx.files.internal("fonts/JockeyOne-Regular.ttf"));
+        try {
+            FreeTypeFontParameter p = new FreeTypeFontParameter();
+            p.size = 22;
+            p.color = Color.WHITE;
+            p.borderWidth = 1;
+            p.borderColor = Color.BLACK;
+            p.minFilter = Texture.TextureFilter.Linear;
+            p.magFilter = Texture.TextureFilter.Linear;
+            return gen.generateFont(p);
+        } finally {
+            gen.dispose();
+        }
+    }
 }

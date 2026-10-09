@@ -12,7 +12,7 @@ import io.github.some_example_name.model.Gem;
 
 /** A noble: the portrait, points at the top left, required card bonuses along the bottom. */
 public class NobleView extends ClickableStack {
-    public static final int SIZE = 200;
+    public static final int SIZE = 180;
 
     /** Shown instead of the portrait when the image file is missing. */
     private static final Color FALLBACK_BG = new Color(0.30f, 0.26f, 0.38f, 1);
