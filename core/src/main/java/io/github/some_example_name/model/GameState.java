@@ -2,18 +2,25 @@ package io.github.some_example_name.model;
 
 import java.util.EnumMap;
 
-import com.badlogic.gdx.math.MathUtils;
 import com.badlogic.gdx.utils.Array;
+
+import io.github.some_example_name.data.CardCatalog;
+import io.github.some_example_name.data.CardInfo;
+import io.github.some_example_name.data.DrawPile;
+import io.github.some_example_name.data.NobleInfo;
 
 public class GameState {
     public static final int WIN_POINTS = 15;
     public static final int TIERS = 3;                  // card levels 1, 2, 3
-    public static final int FACE_UP_PER_TIER = 4;       // cards shown on the board per level
+    public static final int FACE_UP_PER_TIER = 3;       // cards shown per level (same as GameScreen.FACE_UP_PER_LEVEL)
+    public static final int MAX_NOBLES = 4;             // the screen has room for 4 nobles (GameScreen.NOBLES_SHOWN)
     public static final int GOLD_TOKENS = 5;
 
-    public final Array<Array<Card>> decks = new Array<>();    // index 0 = tier 1
-    public final Array<Array<Card>> market = new Array<>();   // face-up cards
-    public final Array<Noble> nobles = new Array<>();
+    // The decks are the catalog's piles: catalog.level(tier) for cards, catalog.nobles for the nobles not in play.
+    // Drawing takes a random card out of a pile, so pile.size() is always "cards left".
+    public final CardCatalog catalog;
+    public final Array<Array<CardInfo>> market = new Array<>();   // face-up cards, index 0 = tier 1
+    public final Array<NobleInfo> nobles = new Array<>();         // nobles on the board
     public final Array<Player> players = new Array<>();
     public final EnumMap<Gem, Integer> bank = new EnumMap<>(Gem.class);
 
@@ -21,41 +28,26 @@ public class GameState {
     public boolean finalRound;      // someone reached WIN_POINTS; finish the round
     public boolean gameOver;
 
-    public static GameState newGame() { return newGame(4); }
+    private GameState(CardCatalog catalog) { this.catalog = catalog; }
 
-    // New game with random test cards (used until the real cards are passed in).
-    public static GameState newGame(int playerCount) {
-        int[] deckSizes = {40, 30, 20};                 // official number of cards per tier
-        Array<Card> cards = new Array<>();
-        int id = 0;
-        for (int tier = 1; tier <= TIERS; tier++) {
-            for (int i = 0; i < deckSizes[tier - 1]; i++) {
-                id++;
-                cards.add(randomCard(id, tier));
-            }
-        }
-        return newGame(playerCount, cards, allNobles());
-    }
-
-    // New game using the cards and nobles given from outside (e.g. read from CSV).
-    // Cards can be in any order; they are put into decks by their tier.
-    // The given lists are copied, so they are not changed.
-    public static GameState newGame(int playerCount, Array<Card> cards, Array<Noble> nobles) {
+    // New game with the cards and nobles read from the CSV files (CardCatalog.load()).
+    // The face-up cards and the nobles are drawn from the catalog's piles, so the catalog changes.
+    public static GameState newGame(int playerCount, CardCatalog catalog) {
         if (playerCount < 2 || playerCount > 4) {
             throw new IllegalArgumentException("2-4 players");
         }
-        int nobleCount = playerCount + 1;
-        if (nobles.size < nobleCount) {
-            throw new IllegalArgumentException("need " + nobleCount + " nobles, got " + nobles.size);
+        int nobleCount = Math.min(playerCount + 1, MAX_NOBLES);
+        if (catalog.nobles.size() < nobleCount) {
+            throw new IllegalArgumentException("need " + nobleCount + " nobles, got " + catalog.nobles.size());
         }
 
-        GameState g = new GameState();
+        GameState g = new GameState(catalog);
         for (int i = 1; i <= playerCount; i++) {
-            g.players.add(new Player("Player " + i));
+            g.players.add(new Player("P" + i));         // same names as the screen's panels
         }
         g.setupBank(playerCount);
-        g.setupDecks(cards);
-        g.setupNobles(nobles, nobleCount);
+        g.setupMarket();
+        g.nobles.addAll(catalog.nobles.draw(nobleCount));
         return g;
     }
 
@@ -75,56 +67,41 @@ public class GameState {
         bank.put(Gem.GOLD, GOLD_TOKENS);
     }
 
-    // Put every card into the deck of its tier, shuffle each deck, then show 4 cards per tier.
-    private void setupDecks(Array<Card> cards) {
+    // Draw FACE_UP_PER_TIER cards from each level's pile (fewer if the pile is small).
+    private void setupMarket() {
         for (int tier = 1; tier <= TIERS; tier++) {
-            decks.add(new Array<Card>());
-            market.add(new Array<Card>());
-        }
-        for (Card c : cards) {
-            if (c.tier < 1 || c.tier > TIERS) {
-                throw new IllegalArgumentException("card " + c.id + " has tier " + c.tier);
-            }
-            decks.get(c.tier - 1).add(c);
-        }
-        for (int tier = 1; tier <= TIERS; tier++) {
-            Array<Card> deck = decks.get(tier - 1);
-            Array<Card> row = market.get(tier - 1);
-            deck.shuffle();
-            while (row.size < FACE_UP_PER_TIER && deck.size > 0) {   // fewer if the deck is small
-                row.add(deck.pop());
-            }
-        }
-    }
-
-    // Shuffle the nobles and put `count` of them on the board.
-    private void setupNobles(Array<Noble> allNobles, int count) {
-        Array<Noble> pool = new Array<>(allNobles);     // copy, so the given list is not shuffled
-        pool.shuffle();
-        for (int i = 0; i < count; i++) {
-            nobles.add(pool.pop());
+            market.add(deck(tier).draw(FACE_UP_PER_TIER));
         }
     }
 
     public Player current() { return players.get(currentPlayer); }
 
-    // Take the top card of a deck. Returns null if the deck is empty.
-    public Card draw(int tier) {
-        Array<Card> deck = decks.get(tier - 1);
-        if (deck.size == 0) return null;
-        return deck.pop();
-    }
+    public DrawPile<CardInfo> deck(int tier) { return catalog.level(tier); }
+
+    // Take a random card from a deck. Returns null if the deck is empty.
+    public CardInfo draw(int tier) { return deck(tier).draw(); }
 
     // Put a new card from the deck into the empty spot on the board.
     // If the deck is empty, the spot is removed.
     public void refill(int tier, int index) {
-        Card next = draw(tier);
-        Array<Card> row = market.get(tier - 1);
+        CardInfo next = draw(tier);
+        Array<CardInfo> row = market.get(tier - 1);
         if (next != null) {
             row.set(index, next);
         } else {
             row.removeIndex(index);
         }
+    }
+
+    // Which level (1-3) shows this card on the board, or 0 if it is not on the board.
+    // Looks at the rows, not card.tier, so a CSV row with a wrong tier cannot break the board.
+    public int tierOnBoard(CardInfo card) {
+        for (int tier = 1; tier <= TIERS; tier++) {
+            if (market.get(tier - 1).contains(card, true)) {
+                return tier;
+            }
+        }
+        return 0;
     }
 
     // Who won: the most points wins.
@@ -150,68 +127,5 @@ public class GameState {
     private static boolean ranksAbove(Player a, Player b) {
         if (a.score() != b.score()) return a.score() > b.score();
         return a.cards.size < b.cards.size;
-    }
-
-    // ---- placeholder data (used by newGame(playerCount) until the real cards are passed in) ----
-
-    private static Card randomCard(int id, int tier) {
-        Gem bonus = randomColour();
-        int points;
-        if (tier == 1) {
-            points = MathUtils.random(0, 1);
-        } else if (tier == 2) {
-            points = MathUtils.random(1, 3);
-        } else {
-            points = MathUtils.random(3, 5);
-        }
-        Card c = new Card(id, tier, points, bonus);
-
-        // price: pick a random colour 2-3 times (never the card's own colour)
-        int picks = MathUtils.random(2, 3);
-        for (int i = 0; i < picks; i++) {
-            Gem gem = randomColour();
-            if (gem != bonus) {
-                int amount = MathUtils.random(1, tier + 2);
-                c.cost.put(gem, c.cost.getOrDefault(gem, 0) + amount);
-            }
-        }
-        if (c.cost.isEmpty()) {                         // every card must cost something
-            Gem other = Gem.WHITE;
-            if (bonus == Gem.WHITE) other = Gem.BLUE;
-            c.cost.put(other, tier + 1);
-        }
-        return c;
-    }
-
-    private static Gem randomColour() {
-        return Gem.BASIC[MathUtils.random(0, Gem.BASIC.length - 1)];
-    }
-
-    // The 10 official nobles (same as Nobles.csv). Each row = cards needed per colour.
-    private static Array<Noble> allNobles() {
-        int[][] needs = {
-            // white, blue, green, red, black   (same order as Gem.BASIC)
-            {0, 3, 3, 3, 0},
-            {4, 0, 0, 0, 4},
-            {0, 0, 0, 4, 4},
-            {4, 4, 0, 0, 0},
-            {0, 0, 4, 4, 0},
-            {3, 0, 0, 3, 3},
-            {3, 3, 0, 0, 3},
-            {0, 4, 4, 0, 0},
-            {3, 3, 3, 0, 0},
-            {0, 0, 3, 3, 3},
-        };
-        Array<Noble> list = new Array<>();
-        for (int i = 0; i < needs.length; i++) {
-            Noble noble = new Noble(i + 1);
-            for (int colour = 0; colour < Gem.BASIC.length; colour++) {
-                if (needs[i][colour] > 0) {
-                    noble.cost.put(Gem.BASIC[colour], needs[i][colour]);
-                }
-            }
-            list.add(noble);
-        }
-        return list;
     }
 }

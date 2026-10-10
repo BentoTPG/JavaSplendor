@@ -5,6 +5,9 @@ import java.util.Map;
 
 import com.badlogic.gdx.utils.Array;
 
+import io.github.some_example_name.data.CardInfo;
+import io.github.some_example_name.data.NobleInfo;
+
 // Game rules for each turn.
 // A turn = do ONE action (take tokens / buy / reserve), then call endTurn().
 // Every action returns false if the move is not allowed.
@@ -107,18 +110,18 @@ public class GameManager {
     // ---- cards ----
 
     // The card can be one on the board or one the player has reserved.
-    public boolean canBuyCard(Card card) {
+    public boolean canBuyCard(CardInfo card) {
         if (card == null || acted || state.gameOver) return false;
         Player p = state.current();
         boolean reachable = inMarket(card) || p.reserved.contains(card, true);
-        return reachable && card.isBuyable(p);
+        return reachable && p.canAfford(card);
     }
 
-    public boolean buyCard(Card card) {
+    public boolean buyCard(CardInfo card) {
         if (!canBuyCard(card)) return false;
         Player p = state.current();
 
-        for (Map.Entry<Gem, Integer> pay : card.paymentFor(p).entrySet()) {
+        for (Map.Entry<Gem, Integer> pay : p.paymentFor(card).entrySet()) {
             payToBank(pay.getKey(), pay.getValue());
         }
 
@@ -137,7 +140,7 @@ public class GameManager {
     }
 
     // Reserve a card that is face up on the board.
-    public boolean reserveCard(Card card) {
+    public boolean reserveCard(CardInfo card) {
         if (card == null || !canReserveCard() || !inMarket(card)) return false;
         removeFromMarket(card);
         takeReserved(card, false);
@@ -148,7 +151,7 @@ public class GameManager {
     // Other players cannot see this card (see Player.isHidden).
     public boolean reserveFromDeck(int tier) {
         if (tier < 1 || tier > GameState.TIERS || !canReserveCard()) return false;
-        Card card = state.draw(tier);
+        CardInfo card = state.draw(tier);
         if (card == null) return false;                             // that deck is empty
         takeReserved(card, true);
         return true;
@@ -157,10 +160,10 @@ public class GameManager {
     // ---- turn flow ----
 
     // Nobles the current player has enough card bonuses for right now.
-    public Array<Noble> getAvailableNobles() {
-        Array<Noble> result = new Array<>();
-        for (Noble n : state.nobles) {
-            if (n.isAvailable(state.current())) {
+    public Array<NobleInfo> getAvailableNobles() {
+        Array<NobleInfo> result = new Array<>();
+        for (NobleInfo n : state.nobles) {
+            if (state.current().qualifiesFor(n)) {
                 result.add(n);
             }
         }
@@ -169,7 +172,7 @@ public class GameManager {
 
     // Pick a noble when the player can get more than one.
     // Only after the action is done, and only one noble per turn.
-    public boolean claimNoble(Noble noble) {
+    public boolean claimNoble(NobleInfo noble) {
         if (!acted || state.gameOver || nobleClaimed) return false;
         if (!getAvailableNobles().contains(noble, true)) return false;
 
@@ -205,7 +208,7 @@ public class GameManager {
 
         // 1. a noble visits if exactly one qualifies (with 2+, the player chose already with claimNoble)
         if (!nobleClaimed) {
-            Array<Noble> available = getAvailableNobles();
+            Array<NobleInfo> available = getAvailableNobles();
             if (available.size == 1) {
                 claimNoble(available.first());
             }
@@ -284,8 +287,8 @@ public class GameManager {
 
     // True if there is still a card on the board or in a deck that could be reserved.
     private boolean anyCardLeft() {
-        for (int i = 0; i < GameState.TIERS; i++) {
-            if (state.market.get(i).size > 0 || state.decks.get(i).size > 0) {
+        for (int tier = 1; tier <= GameState.TIERS; tier++) {
+            if (state.market.get(tier - 1).size > 0 || state.deck(tier).size() > 0) {
                 return true;
             }
         }
@@ -295,19 +298,19 @@ public class GameManager {
     // True if the player can afford a card on the board or one of their reserved cards.
     private boolean canBuyAnyCard() {
         Player p = state.current();
-        for (Array<Card> row : state.market) {
-            for (Card c : row) {
-                if (c.isBuyable(p)) return true;
+        for (Array<CardInfo> row : state.market) {
+            for (CardInfo c : row) {
+                if (p.canAfford(c)) return true;
             }
         }
-        for (Card c : p.reserved) {
-            if (c.isBuyable(p)) return true;
+        for (CardInfo c : p.reserved) {
+            if (p.canAfford(c)) return true;
         }
         return false;
     }
 
     // Shared by both reserve actions: keep the card and get 1 gold if the bank has any.
-    private void takeReserved(Card card, boolean hidden) {
+    private void takeReserved(CardInfo card, boolean hidden) {
         state.current().addReservedCard(card, hidden);
         if (state.bank.get(Gem.GOLD) > 0) {
             takeFromBank(Gem.GOLD, 1);
@@ -327,13 +330,14 @@ public class GameManager {
         state.bank.put(gem, state.bank.get(gem) + amount);
     }
 
-    private boolean inMarket(Card card) {
-        return state.market.get(card.tier - 1).contains(card, true);
+    private boolean inMarket(CardInfo card) {
+        return state.tierOnBoard(card) > 0;
     }
 
     // Take a card off the board and put the next card from the deck in its place.
-    private void removeFromMarket(Card card) {
-        int index = state.market.get(card.tier - 1).indexOf(card, true);
-        state.refill(card.tier, index);
+    private void removeFromMarket(CardInfo card) {
+        int tier = state.tierOnBoard(card);
+        int index = state.market.get(tier - 1).indexOf(card, true);
+        state.refill(tier, index);
     }
 }
