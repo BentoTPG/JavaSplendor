@@ -224,12 +224,12 @@ public class GameManagerTest {
 
     // ---- test data ----
 
-    /** 2 players, 5 cards per level, nobody can reach a noble. */
+    // 2 players, 5 cards per level, nobody can reach a noble.
     private static GameManager game() {
         return new GameManager(GameState.newGame(2, catalog(farNobles(5))));
     }
 
-    /** Every card of a level is the same, so it does not matter which ones are drawn. */
+    // Every card of a level is the same, so it does not matter which ones are drawn.
     private static CardCatalog catalog(Array<NobleInfo> nobles) {
         return new CardCatalog(
                 sameCards(100, 1, 0, Gem.WHITE, 0, 2, 0, 0, 0),     // costs 2 blue
@@ -246,20 +246,18 @@ public class GameManagerTest {
         return cards;
     }
 
-    /**
-     * card(id, tier, points, bonus, white, blue, green, red, black).
-     * "int... cost" means the prices can be left out: card(1, 1, 0, Gem.RED) is a free red card.
-     */
+    // card(id, tier, points, bonus, white, blue, green, red, black).
+    // "int... cost" means the prices can be left out: card(1, 1, 0, Gem.RED) is a free red card.
     private static CardInfo card(int id, int tier, int points, Gem bonus, int... cost) {
         return new CardInfo(id, tier, points, bonus, gems(cost), null);
     }
 
-    /** Card bonuses needed, in the order white, blue, green, red, black. */
+    // Card bonuses needed, in the order white, blue, green, red, black.
     private static NobleInfo noble(int id, int... requires) {
         return new NobleInfo(id, 3, gems(requires), null);
     }
 
-    /** Nobles that need 9 white cards, which no test reaches. */
+    // Nobles that need 9 white cards, which no test reaches.
     private static Array<NobleInfo> farNobles(int count) {
         Array<NobleInfo> nobles = new Array<>();
         for (int i = 1; i <= count; i++) {
@@ -278,7 +276,7 @@ public class GameManagerTest {
         return map;
     }
 
-    /** The tests run inside the core folder, so the real CSV files are one level up in assets/data. */
+    // The tests run inside the core folder, so the real CSV files are one level up in assets/data.
     private static CardCatalog realCatalog() throws IOException {
         return new CardCatalog(
                 CardCatalog.parseCards(csv("Lv1Card.csv"), "Lv1Card.csv", 1),
