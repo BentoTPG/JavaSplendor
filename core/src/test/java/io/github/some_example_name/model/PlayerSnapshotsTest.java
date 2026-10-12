@@ -25,7 +25,7 @@ public class PlayerSnapshotsTest {
         CardInfo kept = card(3, 4, Gem.RED);
         p.addReservedCard(kept, false);
 
-        PlayerSnapshot s = PlayerSnapshots.of(p);
+        PlayerSnapshot s = PlayerSnapshots.fromPlayer(p);
         assertEquals("P2", s.name);
         assertEquals(3, s.points);
         assertEquals(2, s.gems(Gem.RED));

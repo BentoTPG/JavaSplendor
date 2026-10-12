@@ -19,8 +19,9 @@ public class GameState {
     // The decks are the catalog's piles: catalog.level(tier) for cards, catalog.nobles for the nobles not in play.
     // Drawing takes a random card out of a pile, so pile.size() is always "cards left".
     public final CardCatalog catalog;
-    public final Array<Array<CardInfo>> market = new Array<>();   // face-up cards, index 0 = tier 1
-    public final Array<NobleInfo> nobles = new Array<>();         // nobles on the board
+    // Face-up cards: one row per level. Use row(tier) instead of market.get(tier - 1).
+    public final Array<Array<CardInfo>> market = new Array<>();
+    public final Array<NobleInfo> nobles = new Array<>();         // nobles on the board (not the pile in catalog)
     public final Array<Player> players = new Array<>();
     public final EnumMap<Gem, Integer> bank = new EnumMap<>(Gem.class);
 
@@ -28,6 +29,7 @@ public class GameState {
     public boolean finalRound;      // someone reached WIN_POINTS; finish the round
     public boolean gameOver;
 
+    // private: make a game with GameState.newGame(...) below, not with "new GameState".
     private GameState(CardCatalog catalog) { this.catalog = catalog; }
 
     // New game with the cards and nobles read from the CSV files (CardCatalog.load()).
@@ -47,7 +49,8 @@ public class GameState {
         }
         g.setupBank(playerCount);
         g.setupMarket();
-        g.nobles.addAll(catalog.nobles.draw(nobleCount));
+        Array<NobleInfo> drawn = catalog.nobles.draw(nobleCount);   // taken out of the pile...
+        g.nobles.addAll(drawn);                                     // ...and put on the board
         return g;
     }
 
@@ -76,6 +79,9 @@ public class GameState {
 
     public Player current() { return players.get(currentPlayer); }
 
+    // The face-up cards of a level (1, 2 or 3). The list starts at 0, so level 1 is market.get(0).
+    public Array<CardInfo> row(int tier) { return market.get(tier - 1); }
+
     public DrawPile<CardInfo> deck(int tier) { return catalog.level(tier); }
 
     // Take a random card from a deck. Returns null if the deck is empty.
@@ -85,11 +91,10 @@ public class GameState {
     // If the deck is empty, the spot is removed.
     public void refill(int tier, int index) {
         CardInfo next = draw(tier);
-        Array<CardInfo> row = market.get(tier - 1);
         if (next != null) {
-            row.set(index, next);
+            row(tier).set(index, next);
         } else {
-            row.removeIndex(index);
+            row(tier).removeIndex(index);
         }
     }
 
@@ -97,35 +102,43 @@ public class GameState {
     // Looks at the rows, not card.tier, so a CSV row with a wrong tier cannot break the board.
     public int tierOnBoard(CardInfo card) {
         for (int tier = 1; tier <= TIERS; tier++) {
-            if (market.get(tier - 1).contains(card, true)) {
+            if (row(tier).contains(card, true)) {       // true = this exact card object
                 return tier;
             }
         }
         return 0;
     }
 
+    public boolean isOnBoard(CardInfo card) { return tierOnBoard(card) != 0; }
+
     // Who won: the most points wins.
     // Same points -> the player with fewer cards wins.
     // Still the same -> they all win together.
     public Array<Player> winners() {
-        Array<Player> best = new Array<>();
+        // 1. the highest score
+        int bestScore = 0;
         for (Player p : players) {
-            if (best.size == 0 || ranksAbove(p, best.first())) {
-                best.clear();
-                best.add(p);
-            } else if (!ranksAbove(best.first(), p)) {
-                best.add(p);                            // exactly tied
+            bestScore = Math.max(bestScore, p.score());
+        }
+
+        // 2. among the players with that score, the fewest cards
+        int fewestCards = Integer.MAX_VALUE;
+        for (Player p : players) {
+            if (p.score() == bestScore) {
+                fewestCards = Math.min(fewestCards, p.cards.size);
             }
         }
-        return best;
+
+        // 3. everyone with that score and that number of cards wins
+        Array<Player> result = new Array<>();
+        for (Player p : players) {
+            if (p.score() == bestScore && p.cards.size == fewestCards) {
+                result.add(p);
+            }
+        }
+        return result;
     }
 
     // Just one winner. Use winners() if more than one player can win.
     public Player winner() { return winners().first(); }
-
-    // True if player a is better than b: more points, or same points with fewer cards.
-    private static boolean ranksAbove(Player a, Player b) {
-        if (a.score() != b.score()) return a.score() > b.score();
-        return a.cards.size < b.cards.size;
-    }
 }

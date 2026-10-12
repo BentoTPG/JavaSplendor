@@ -1,7 +1,6 @@
 package io.github.some_example_name.model;
 
 import java.util.EnumMap;
-import java.util.Map;
 
 import com.badlogic.gdx.utils.Array;
 
@@ -9,9 +8,11 @@ import io.github.some_example_name.data.CardInfo;
 import io.github.some_example_name.data.NobleInfo;
 
 // Cards and nobles are the CSV rows (CardInfo, NobleInfo), the same objects the screen draws.
+// Array is libGDX's list. In contains(c, true) and removeValue(c, true), "true" means
+// "look for this exact object" (==), so two cards with the same price are never mixed up.
 public class Player {
     public final String name;
-    public final EnumMap<Gem, Integer> tokens = new EnumMap<>(Gem.class);
+    public final EnumMap<Gem, Integer> tokens = new EnumMap<>(Gem.class);   // a Map whose keys are Gem colours
     public final Array<CardInfo> cards = new Array<>();
     public final Array<CardInfo> reserved = new Array<>();
     public final Array<NobleInfo> nobles = new Array<>();
@@ -28,8 +29,8 @@ public class Player {
 
     public int totalTokens() {
         int sum = 0;
-        for (int n : tokens.values()) {
-            sum += n;
+        for (Gem g : Gem.values()) {
+            sum += tokenCount(g);
         }
         return sum;
     }
@@ -61,9 +62,8 @@ public class Player {
         EnumMap<Gem, Integer> payment = new EnumMap<>(Gem.class);
         int goldNeeded = 0;
 
-        for (Map.Entry<Gem, Integer> entry : card.cost.entrySet()) {
-            Gem gem = entry.getKey();
-            int price = entry.getValue();
+        for (Gem gem : card.cost.keySet()) {         // only the colours this card asks for
+            int price = card.cost.get(gem);
 
             // 1. bonuses from bought cards lower the price (never below 0)
             int stillNeed = Math.max(0, price - bonus(gem));
@@ -91,8 +91,9 @@ public class Player {
 
     // True if the player has enough cards of every colour this noble needs.
     public boolean qualifiesFor(NobleInfo noble) {
-        for (Map.Entry<Gem, Integer> need : noble.requires.entrySet()) {
-            if (bonus(need.getKey()) < need.getValue()) {
+        for (Gem gem : noble.requires.keySet()) {
+            int needed = noble.requires.get(gem);
+            if (bonus(gem) < needed) {
                 return false;
             }
         }

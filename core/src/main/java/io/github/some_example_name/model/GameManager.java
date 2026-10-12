@@ -1,7 +1,6 @@
 package io.github.some_example_name.model;
 
-import java.util.EnumSet;
-import java.util.Map;
+import java.util.EnumMap;
 
 import com.badlogic.gdx.utils.Array;
 
@@ -11,6 +10,7 @@ import io.github.some_example_name.data.NobleInfo;
 // Game rules for each turn.
 // A turn = do ONE action (take tokens / buy / reserve), then call endTurn().
 // Every action returns false if the move is not allowed.
+// In contains(x, true) / removeValue(x, true) on a libGDX Array, "true" means "this exact object" (==).
 public class GameManager {
     public static final int MAX_TOKENS = 10;            // a player may hold at most 10 tokens
     public static final int MAX_RESERVED = 3;           // a player may hold at most 3 reserved cards
@@ -40,17 +40,22 @@ public class GameManager {
     // How many tokens the player must still give back before the turn can end.
     // Two reasons: holding more than 10, or the 7-token house rule (see TOO_MANY_AT_START).
     public int tokensToDiscard() {
-        // Rule 1: started with 7+ tokens and did not buy a card -> give back 4 (minus those already given back)
+        // Rule 1: started with 7+ tokens and did not buy a card -> give back 4 (minus those already given back).
+        // A pass does not count: the player had no move at all.
         int owedByPenalty = 0;
-        if (acted && startedWithTooMany && !bought) {
+        if (acted && startedWithTooMany && !bought && !passed) {
             owedByPenalty = PENALTY_RETURN - tokensReturned;
         }
 
         // Rule 2: holding more than 10 tokens -> give back the extra ones
         int owedByLimit = state.current().totalTokens() - MAX_TOKENS;
 
-        // One returned token counts for both rules, so take the bigger number (never below 0)
-        return Math.max(0, Math.max(owedByPenalty, owedByLimit));
+        // One returned token counts for both rules, so the player owes the bigger number
+        int owed = Math.max(owedByPenalty, owedByLimit);
+        if (owed < 0) {
+            owed = 0;                               // negative = nothing owed
+        }
+        return owed;
     }
 
     public boolean hasActed() { return acted; }
@@ -69,6 +74,8 @@ public class GameManager {
 
     // Allowed: 3 different colours, or 2 of the same colour (only if the bank has 4+ of it).
     // Taking fewer than 3 different colours is allowed only when the bank has no other colours left.
+    // "Gem... colors" lets you pass any number of colours, e.g. canTakeTokens(Gem.RED, Gem.BLUE, Gem.GREEN);
+    // inside the method, colors is a normal array (Gem[]).
     public boolean canTakeTokens(Gem... colors) {
         if (acted || state.gameOver || colors == null) return false;
         if (colors.length < 1 || colors.length > 3) return false;
@@ -121,8 +128,9 @@ public class GameManager {
         if (!canBuyCard(card)) return false;
         Player p = state.current();
 
-        for (Map.Entry<Gem, Integer> pay : p.paymentFor(card).entrySet()) {
-            payToBank(pay.getKey(), pay.getValue());
+        EnumMap<Gem, Integer> payment = p.paymentFor(card);     // tokens to pay, per colour
+        for (Gem gem : payment.keySet()) {
+            payToBank(gem, payment.get(gem));
         }
 
         boolean wasReserved = p.removeReservedCard(card);
@@ -195,7 +203,6 @@ public class GameManager {
     public boolean pass() {
         if (acted || state.gameOver || canAct()) return false;
         acted = true;
-        bought = true;                              // nothing was possible, so no 7-token penalty
         passed = true;
         return endTurn();
     }
@@ -262,14 +269,14 @@ public class GameManager {
         return colors.length == coloursInBank();
     }
 
-    // True if the same colour appears twice.
+    // True if the same colour appears twice: compare every pair once.
     private static boolean hasDuplicate(Gem[] colors) {
-        EnumSet<Gem> seen = EnumSet.noneOf(Gem.class);
-        for (Gem gem : colors) {
-            if (seen.contains(gem)) {
-                return true;
+        for (int i = 0; i < colors.length; i++) {
+            for (int j = i + 1; j < colors.length; j++) {
+                if (colors[i] == colors[j]) {
+                    return true;
+                }
             }
-            seen.add(gem);
         }
         return false;
     }
@@ -288,7 +295,7 @@ public class GameManager {
     // True if there is still a card on the board or in a deck that could be reserved.
     private boolean anyCardLeft() {
         for (int tier = 1; tier <= GameState.TIERS; tier++) {
-            if (state.market.get(tier - 1).size > 0 || state.deck(tier).size() > 0) {
+            if (state.row(tier).size > 0 || state.deck(tier).size() > 0) {
                 return true;
             }
         }
@@ -331,13 +338,13 @@ public class GameManager {
     }
 
     private boolean inMarket(CardInfo card) {
-        return state.tierOnBoard(card) > 0;
+        return state.isOnBoard(card);
     }
 
     // Take a card off the board and put the next card from the deck in its place.
     private void removeFromMarket(CardInfo card) {
         int tier = state.tierOnBoard(card);
-        int index = state.market.get(tier - 1).indexOf(card, true);
+        int index = state.row(tier).indexOf(card, true);       // where the card sits in its row
         state.refill(tier, index);
     }
 }
