@@ -27,7 +27,7 @@ public class GameManagerTest {
     public void newGameMatchesTheScreen() throws IOException {
         GameState s = GameState.newGame(4, realCatalog());
         for (int tier = 1; tier <= GameState.TIERS; tier++) {
-            assertEquals(3, s.market.get(tier - 1).size);
+            assertEquals(3, s.row(tier).size);
         }
         assertEquals(37, s.deck(1).size());
         assertEquals(27, s.deck(2).size());
@@ -84,13 +84,31 @@ public class GameManagerTest {
         assertTrue(gm.endTurn());
     }
 
+    @Test
+    public void passWithSevenTokensHasNoPenalty() {
+        GameState s = GameState.newGame(2, catalog(farNobles(5)));
+        Player p = s.current();
+        p.addToken(Gem.BLACK, 7);                               // 7+ tokens when the turn starts
+        for (int i = 1; i <= GameManager.MAX_RESERVED; i++) {
+            p.addReservedCard(card(i, 1, 0, Gem.RED, 9), false);  // too expensive, and no room to reserve more
+        }
+        for (Gem g : Gem.BASIC) {
+            s.bank.put(g, 0);                                   // no tokens left to take
+        }
+        GameManager gm = new GameManager(s);
+
+        assertFalse(gm.canAct());
+        assertTrue(gm.pass());                                  // no 4-token penalty for a pass
+        assertEquals(1, s.currentPlayer);
+    }
+
     // ---- cards ----
 
     @Test
     public void buyingUsesBonusesThenGoldAndRefillsTheBoard() {
         GameManager gm = game();
         Player p = gm.state.current();
-        CardInfo target = gm.state.market.get(0).first();      // every level-1 test card costs 2 blue
+        CardInfo target = gm.state.row(1).first();      // every level-1 test card costs 2 blue
         p.addCard(card(1, 1, 0, Gem.BLUE));                     // 1 blue bonus, so 1 blue still needed
         p.addToken(Gem.GOLD, 1);
         int goldInBank = gm.state.bank.get(Gem.GOLD);
@@ -99,15 +117,15 @@ public class GameManagerTest {
         assertEquals(0, p.tokenCount(Gem.GOLD));
         assertEquals(goldInBank + 1, (int) gm.state.bank.get(Gem.GOLD));
         assertTrue(p.cards.contains(target, true));
-        assertFalse(gm.state.market.get(0).contains(target, true));
-        assertEquals(3, gm.state.market.get(0).size);           // refilled from the deck
+        assertFalse(gm.state.row(1).contains(target, true));
+        assertEquals(3, gm.state.row(1).size);           // refilled from the deck
         assertEquals(1, gm.state.deck(1).size());               // 5 cards - 3 face up - 1 refill
     }
 
     @Test
     public void cannotBuyWithoutEnoughTokens() {
         GameManager gm = game();
-        assertFalse(gm.buyCard(gm.state.market.get(0).first()));
+        assertFalse(gm.buyCard(gm.state.row(1).first()));
         assertFalse(gm.hasActed());
     }
 
@@ -115,13 +133,13 @@ public class GameManagerTest {
     public void reserveGivesGoldAndRefillsTheBoard() {
         GameManager gm = game();
         Player p = gm.state.current();
-        CardInfo target = gm.state.market.get(1).first();
+        CardInfo target = gm.state.row(2).first();
         assertTrue(gm.reserveCard(target));
         assertSame(target, p.reserved.first());
         assertFalse(p.isHidden(target));
         assertEquals(1, p.tokenCount(Gem.GOLD));
         assertEquals(4, (int) gm.state.bank.get(Gem.GOLD));
-        assertEquals(3, gm.state.market.get(1).size);
+        assertEquals(3, gm.state.row(2).size);
     }
 
     @Test
@@ -131,7 +149,7 @@ public class GameManagerTest {
         for (int i = 1; i <= GameManager.MAX_RESERVED; i++) {
             p.addReservedCard(card(i, 1, 0, Gem.RED), false);
         }
-        assertFalse(gm.reserveCard(gm.state.market.get(0).first()));
+        assertFalse(gm.reserveCard(gm.state.row(1).first()));
         assertFalse(gm.reserveFromDeck(1));
     }
 
@@ -228,7 +246,10 @@ public class GameManagerTest {
         return cards;
     }
 
-    /** Cost in the order white, blue, green, red, black (same as Gem.BASIC). */
+    /**
+     * card(id, tier, points, bonus, white, blue, green, red, black).
+     * "int... cost" means the prices can be left out: card(1, 1, 0, Gem.RED) is a free red card.
+     */
     private static CardInfo card(int id, int tier, int points, Gem bonus, int... cost) {
         return new CardInfo(id, tier, points, bonus, gems(cost), null);
     }

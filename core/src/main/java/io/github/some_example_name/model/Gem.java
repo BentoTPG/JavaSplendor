@@ -9,6 +9,8 @@ public enum Gem {
     // The 5 normal colours (all except GOLD).
     public static final Gem[] BASIC = {WHITE, BLUE, GREEN, RED, BLACK};
 
+    // Every colour also has an RGB colour for drawing, e.g. Gem.RED.color.
+    // The constructor below runs once for each constant above, with the numbers in its brackets.
     public final Color color;
     Gem(float r, float g, float b) { color = new Color(r, g, b, 1f); }
 }
