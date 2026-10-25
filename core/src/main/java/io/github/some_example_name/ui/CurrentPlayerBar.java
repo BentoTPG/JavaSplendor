@@ -16,6 +16,12 @@ public class CurrentPlayerBar extends Table {
     public final PlayerSnapshot player;
 
     public CurrentPlayerBar(PlayerSnapshot p, UiStyles s, PlayerParts.CardClick onReserved) {
+        this(p, s, onReserved, null);
+    }
+
+    /** onGem is called when one of the player's own gems is clicked (null = gems are not clickable). */
+    public CurrentPlayerBar(PlayerSnapshot p, UiStyles s, PlayerParts.CardClick onReserved,
+                            PlayerParts.GemClick onGem) {
         this.player = p;
         setBackground(Gfx.solid(PANEL));
         pad(10, 20, 10, 20);
@@ -30,7 +36,7 @@ public class CurrentPlayerBar extends Table {
         Table reserved = PlayerParts.reservedGrid(p, 3, 86, 130, 1.6f, Align.bottom, s, onReserved);
         add(PlayerParts.section("Reserved", reserved, s)).padLeft(16);
         add(PlayerParts.section("Cards", PlayerParts.bonusGrid(p, 5, 60, s.small), s)).padLeft(24);
-        add(PlayerParts.section("Gems", PlayerParts.gemGrid(p, 3, 60, s.small), s)).padLeft(24);
+        add(PlayerParts.section("Gems", PlayerParts.gemGrid(p, 3, 60, s.small, onGem), s)).padLeft(24);
 
         Table total = new Table();
         total.add(PlayerParts.caption("Total", s)).right().row();

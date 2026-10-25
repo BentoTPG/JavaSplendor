@@ -22,6 +22,10 @@ public class PlayerSnapshot {
     /** How many bought cards of each colour (the permanent discount). */
     public final EnumMap<Gem, Integer> bonuses = new EnumMap<Gem, Integer>(Gem.class);
     public final Array<CardInfo> reserved = new Array<CardInfo>();
+    /** The reserved cards that were taken face down from a deck (a subset of reserved). */
+    public final Array<CardInfo> hidden = new Array<CardInfo>();
+    /** true: the viewer is not this player, so face-down reserved cards are drawn as card backs. Set by the screen. */
+    public boolean maskHidden;
 
     public PlayerSnapshot(String name) {
         this.name = name;
@@ -35,6 +39,11 @@ public class PlayerSnapshot {
     public int bonus(Gem gem) {
         Integer n = bonuses.get(gem);
         return n == null ? 0 : n;
+    }
+
+    /** True if this reserved card was taken face down. */
+    public boolean isHidden(CardInfo card) {
+        return hidden.contains(card, true);
     }
 
     /** Sets every gem count at once, in the order white, blue, green, red, black, gold. */
