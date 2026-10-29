@@ -278,14 +278,35 @@ public class GameScreen extends ScreenAdapter {
         if (game.hasActed() || state.gameOver) return;          // after the action, tokens go back by clicking your own gems
         // Only picks that can still become a legal take: up to 3 different colours, or 2 of one colour.
         boolean twoSame = pending.size == 2 && pending.get(0) == pending.get(1);
-        if (pending.contains(gem, true)) {
-            if (pending.size == 1) pending.add(gem);            // second gem of the same colour
-            else Gdx.app.log("Game", "two of a colour, or three different colours");
+        if (state.bank.get(gem) <= countPending(gem)) {
+            hint = "The bank has no more " + gem + ".";
+        } else if (pending.contains(gem, true)) {
+            if (pending.size != 1) {
+                hint = "Take 2 of one colour, or up to 3 different colours.";
+            } else if (state.bank.get(gem) < GameManager.MIN_FOR_TWO_SAME) {
+                // Splendor rule: 2 of the same colour only when the bank has 4 or more of it
+                hint = "2 " + gem + " needs " + GameManager.MIN_FOR_TWO_SAME + "+ in the bank (only "
+                        + state.bank.get(gem) + " left).";
+            } else {
+                pending.add(gem);                               // second gem of the same colour
+            }
         } else if (pending.size < 3 && !twoSame) {
             pending.add(gem);
+        } else {
+            hint = "Take 2 of one colour, or up to 3 different colours.";
         }
         refresh();
     }
+
+    /** One-time message for the status line, explaining why a click did nothing. Cleared after it is shown. */
+    private String hint;
+
+    private int countPending(Gem gem) {
+        int n = 0;
+        for (Gem g : pending) if (g == gem) n++;
+        return n;
+    }
+    
 
     private void onBankGemRemoved(Gem gem) {
         if (game.hasActed() || state.gameOver) return;

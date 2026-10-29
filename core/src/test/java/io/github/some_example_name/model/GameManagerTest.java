@@ -62,11 +62,14 @@ public class GameManagerTest {
     }
 
     @Test
-    public void twoOfOneColourNeedsFourInTheBank() {
+    public void twoOfOneColourNeedsTwoInTheBank() {
         GameManager gm = game();                                // 2 players: 4 of each colour
         assertTrue(gm.takeTokens(Gem.RED, Gem.RED));
         assertTrue(gm.endTurn());
-        assertFalse(gm.canTakeTokens(Gem.RED, Gem.RED));        // only 2 red left
+        assertTrue(gm.canTakeTokens(Gem.RED, Gem.RED));         // house rule: 2 red left is still enough
+        assertTrue(gm.takeTokens(Gem.RED, Gem.RED));
+        assertTrue(gm.endTurn());
+        assertFalse(gm.canTakeTokens(Gem.RED, Gem.RED));        // no red left
         assertFalse(gm.canTakeTokens(Gem.GOLD, Gem.WHITE, Gem.BLUE));
     }
 

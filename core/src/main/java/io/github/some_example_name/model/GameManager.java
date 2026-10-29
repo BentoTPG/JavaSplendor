@@ -14,7 +14,7 @@ import io.github.some_example_name.data.NobleInfo;
 public class GameManager {
     public static final int MAX_TOKENS = 10;            // a player may hold at most 10 tokens
     public static final int MAX_RESERVED = 3;           // a player may hold at most 3 reserved cards
-    public static final int MIN_FOR_TWO_SAME = 4;       // taking 2 of one colour needs 4+ of it in the bank
+    public static final int MIN_FOR_TWO_SAME = 2;       // taking 2 of one colour needs 4+ of it in the bank
 
     // House rule: start a turn with 7+ tokens -> buy a card this turn, or give back 4 tokens.
     public static final int TOO_MANY_AT_START = 7;
