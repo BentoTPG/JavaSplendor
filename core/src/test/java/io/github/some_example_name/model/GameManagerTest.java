@@ -189,6 +189,37 @@ public class GameManagerTest {
     }
 
     @Test
+    public void aBoughtNobleIsReplacedFromThePile() {
+        GameState s = GameState.newGame(2, catalog(farNobles(5)));   // 2 players: 3 on the board, 2 in the pile
+        NobleInfo red = noble(50, 0, 0, 0, 2, 0);
+        s.nobles.set(0, red);                                   // the first noble on the board needs 2 red cards
+        GameManager gm = new GameManager(s);
+        Player p = s.current();
+        p.addCard(card(1, 1, 0, Gem.RED));
+        p.addCard(card(2, 1, 0, Gem.RED));
+
+        assertTrue(gm.buyNoble(red));
+        assertFalse(s.nobles.contains(red, true));
+        assertEquals(3, s.nobles.size);                         // a new noble from the pile took its place
+        assertEquals(1, s.catalog.nobles.size());
+    }
+
+    @Test
+    public void lastNobleIsNotReplacedWhenThePileIsEmpty() {
+        NobleInfo red = noble(50, 0, 0, 0, 2, 0);
+        Array<NobleInfo> nobles = farNobles(2);
+        nobles.add(red);
+        GameState s = GameState.newGame(2, catalog(nobles));    // 2 players: all 3 on the board, pile empty
+        GameManager gm = new GameManager(s);
+        Player p = s.current();
+        p.addCard(card(1, 1, 0, Gem.RED));
+        p.addCard(card(2, 1, 0, Gem.RED));
+
+        assertTrue(gm.buyNoble(red));
+        assertEquals(2, s.nobles.size);                         // nothing left to draw
+    }
+
+    @Test
     public void nobleNeedsTheCardBonuses() {
         GameManager gm = game();
         NobleInfo far = gm.state.nobles.first();                // needs 9 white cards

@@ -36,10 +36,13 @@ public class CardActionOverlay extends Table {
         });
         buy.setDisabled(!canBuy);
 
-        TextButton reserve = UiButtons.create("Reserve", small, new Runnable() {
-            @Override public void run() { CardActionOverlay.this.remove(); onReserve.run(); }
-        });
-        reserve.setDisabled(!canReserve);
+        TextButton reserve = null;
+        if (onReserve != null) {                         // no Reserve button for a card that is already reserved
+            reserve = UiButtons.create("Reserve", small, new Runnable() {
+                @Override public void run() { CardActionOverlay.this.remove(); onReserve.run(); }
+            });
+            reserve.setDisabled(!canReserve);
+        }
 
         TextButton cancel = UiButtons.create("Cancel", small, new Runnable() {
             @Override public void run() { CardActionOverlay.this.remove(); }
@@ -47,7 +50,7 @@ public class CardActionOverlay extends Table {
 
         Table buttons = new Table();
         buttons.add(buy).pad(8);
-        buttons.add(reserve).pad(8);
+        if (reserve != null) buttons.add(reserve).pad(8);
         buttons.add(cancel).pad(8);
         add(buttons);
     }

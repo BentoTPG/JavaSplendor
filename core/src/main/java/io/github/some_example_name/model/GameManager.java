@@ -181,9 +181,16 @@ public class GameManager {
         return state.nobles.contains(noble, true) && state.current().qualifiesFor(noble);
     }
 
+    // The bought noble's place on the board is taken by the next noble from the pile (if any are left).
     public boolean buyNoble(NobleInfo noble) {
         if (!canBuyNoble(noble)) return false;
-        state.nobles.removeValue(noble, true);
+        int index = state.nobles.indexOf(noble, true);          // where the noble sits on the board
+        NobleInfo next = state.catalog.nobles.draw();           // null when the pile is empty
+        if (next != null) {
+            state.nobles.set(index, next);                      // the new noble takes the same place
+        } else {
+            state.nobles.removeIndex(index);
+        }
         state.current().addNoble(noble);
         acted = true;
         return true;

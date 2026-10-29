@@ -32,6 +32,7 @@ import io.github.some_example_name.ui.DeckView;
 import io.github.some_example_name.ui.Fonts;
 import io.github.some_example_name.ui.GemBankView;
 import io.github.some_example_name.ui.Gfx;
+import io.github.some_example_name.ui.MiniCardView;
 import io.github.some_example_name.ui.NobleActionOverlay;
 import io.github.some_example_name.ui.NobleView;
 import io.github.some_example_name.ui.OtherPlayerCard;
@@ -51,7 +52,7 @@ import io.github.some_example_name.ui.UiStyles;
  *   click gems in the bank         = add one gem to the pick (right-click a gem = take it back out),
  *                                    then press [Pick]
  *   click a deck tile              = reserve the top card of that deck (face down)
- *   click your own reserved card   = buy it (or look at it when you cannot afford it)
+ *   click your own reserved card   = window with [Buy] [Cancel]
  *   click your own gems            = give a token back (only while tokens are owed)
  *   click a noble                  = window with [Buy] [Cancel] (buying a noble is the action of the turn)
  *   [End turn] / [Pass] buttons    = gm.endTurn() / gm.pass() (Pass skips the turn, any time before acting)
@@ -169,12 +170,23 @@ public class GameScreen extends ScreenAdapter {
     private void onReservedClicked(CardInfo card) {
         Player owner = ownerOfReserved(card);
         if (owner != null && owner != state.current() && owner.isHidden(card)) return;   // face-down card of another player
-        if (owner == state.current() && game.canBuyCard(card)) {        // your own reserved card you can afford: buy it
-            game.buyCard(card);
-            refresh();
+        if (owner == state.current()) {                                 // your own reserved card: [Buy] [Cancel]
+            openReservedCardWindow(card);
             return;
         }
         stage.addActor(new CardDetailOverlay(card, big, small, styles));
+    }
+
+    /** The window with [Buy] [Cancel] for one of your own reserved cards (Buy is grey when you cannot afford it). */
+    private void openReservedCardWindow(final CardInfo card) {
+        stage.addActor(new CardActionOverlay(card, game.canBuyCard(card), false, big, small,
+                new Runnable() {
+                    @Override public void run() {
+                        if (!game.buyCard(card)) Gdx.app.log("Game", "cannot buy card " + card.id);
+                        refresh();
+                    }
+                },
+                null));                                                 // null = no Reserve button
     }
 
     private void onOwnGemClicked(Gem gem) {
@@ -238,6 +250,10 @@ public class GameScreen extends ScreenAdapter {
                     @Override public void run() { openCardWindow(card); }
                 };
                 marketTable.add(view).size(CardView.W, CardView.H).pad(6);
+            }
+            // When a deck runs out its row gets shorter; empty boxes keep the row's width, so the board does not move.
+            for (int i = state.row(tier).size; i < FACE_UP_PER_LEVEL; i++) {
+                marketTable.add(MiniCardView.emptySlot()).size(CardView.W, CardView.H).pad(6);
             }
             marketTable.row();
         }
@@ -351,6 +367,11 @@ public class GameScreen extends ScreenAdapter {
                 @Override public void run() { openNobleWindow(noble); }
             };
             noblesTable.add(view).size(NobleView.SIZE).pad(4).row();
+        }
+        // Keep the column as tall as at the start of the game (players + 1 nobles, at most 4).
+        int slots = Math.min(state.players.size + 1, NOBLES_SHOWN);
+        for (int i = state.nobles.size; i < slots; i++) {
+            noblesTable.add(MiniCardView.emptySlot()).size(NobleView.SIZE).pad(4).row();
         }
     }
 
