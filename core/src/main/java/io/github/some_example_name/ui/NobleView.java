@@ -29,7 +29,7 @@ public class NobleView extends ClickableStack {
 
         Table requires = new Table();
         for (Map.Entry<Gem, Integer> e : noble.requires.entrySet()) {
-            requires.add(GemIcons.chip(e.getKey(), e.getValue(), 48, small)).size(46).pad(2);
+        	requires.add(PlayerParts.bonusTile(e.getKey(), e.getValue(), small)).size(46).pad(2);
         }
         ui.add(requires).bottom().left();
         add(ui);
