@@ -8,13 +8,15 @@ import io.github.some_example_name.data.CardInfo;
 import io.github.some_example_name.data.NobleInfo;
 
 // Game rules for each turn.
-// A turn = do ONE action (take tokens / buy / reserve), then call endTurn().
+// A turn = do ONE action (take tokens / buy a card / reserve / buy a noble), then call endTurn().
+// House rules: nobles are bought as an action (no free visit), and the game ends after the round
+// in which the last card is bought (no 15-point win).
 // Every action returns false if the move is not allowed.
 // In contains(x, true) / removeValue(x, true) on a libGDX Array, "true" means "this exact object" (==).
 public class GameManager {
     public static final int MAX_TOKENS = 10;            // a player may hold at most 10 tokens
     public static final int MAX_RESERVED = 3;           // a player may hold at most 3 reserved cards
-    public static final int MIN_FOR_TWO_SAME = 2;       // taking 2 of one colour needs 4+ of it in the bank
+    public static final int MIN_FOR_TWO_SAME = 2;       // house rule: taking 2 of one colour needs 2+ of it in the bank
 
     // House rule: start a turn with 7+ tokens -> buy a card this turn, or give back 4 tokens.
     public static final int TOO_MANY_AT_START = 7;
@@ -24,7 +26,6 @@ public class GameManager {
 
     // What happened in the current turn (cleared by startNewTurn)
     private boolean acted;                  // the player has done their action
-    private boolean nobleClaimed;           // a noble was already taken this turn
     private boolean bought;                 // the action this turn was buying a card
     private boolean passed;                 // the turn was skipped with pass()
     private boolean startedWithTooMany;     // held TOO_MANY_AT_START+ tokens when the turn began
@@ -60,14 +61,9 @@ public class GameManager {
 
     public boolean hasActed() { return acted; }
 
-    // True when the player qualifies for 2+ nobles and must call claimNoble before ending the turn.
-    public boolean needsNobleChoice() {
-        return acted && !nobleClaimed && getAvailableNobles().size > 1;
-    }
-
-    // True when endTurn() would succeed: action done, no tokens owed, no noble choice pending.
+    // True when endTurn() would succeed: action done and no tokens owed.
     public boolean canEndTurn() {
-        return acted && !state.gameOver && tokensToDiscard() == 0 && !needsNobleChoice();
+        return acted && !state.gameOver && tokensToDiscard() == 0;
     }
 
     // ---- tokens ----
@@ -178,62 +174,65 @@ public class GameManager {
         return result;
     }
 
-    // Pick a noble when the player can get more than one.
-    // Only after the action is done, and only one noble per turn.
-    public boolean claimNoble(NobleInfo noble) {
-        if (!acted || state.gameOver || nobleClaimed) return false;
-        if (!getAvailableNobles().contains(noble, true)) return false;
+    // House rule: buying a noble is the action of the turn, like buying a card (nobles cannot be reserved).
+    // The price is the card bonuses the noble needs; nothing is paid, the bought cards stay.
+    public boolean canBuyNoble(NobleInfo noble) {
+        if (noble == null || acted || state.gameOver) return false;
+        return state.nobles.contains(noble, true) && state.current().qualifiesFor(noble);
+    }
 
+    public boolean buyNoble(NobleInfo noble) {
+        if (!canBuyNoble(noble)) return false;
         state.nobles.removeValue(noble, true);
         state.current().addNoble(noble);
-        nobleClaimed = true;
+        acted = true;
         return true;
     }
 
-    // True if the player can still do something: take tokens, reserve, or buy.
+    // True if the player can still do something: take tokens, reserve, buy a card, or buy a noble.
     public boolean canAct() {
         if (state.gameOver) return false;
         if (coloursInBank() > 0) return true;                       // can take tokens
         if (canReserveCard() && anyCardLeft()) return true;         // can reserve
-        return canBuyAnyCard();                                     // can buy
+        if (getAvailableNobles().size > 0) return true;             // can buy a noble
+        return canBuyAnyCard();                                     // can buy a card
     }
 
-    // Skip the turn. Only allowed when the player has no possible action.
-    // If it returns false because a noble must be chosen: call claimNoble, then endTurn.
+    // House rule: a player may skip the turn at any time, before doing an action.
+    public boolean canPass() {
+        return !acted && !state.gameOver;
+    }
+
+    // Skip the turn.
+    // Only a pass with no possible move ("forced") skips the 7-token penalty and counts toward
+    // a full round of passes that ends the game; a pass by choice does neither.
+    // If it returns false (tokens to give back): return them, then call endTurn.
     public boolean pass() {
-        if (acted || state.gameOver || canAct()) return false;
+        if (!canPass()) return false;
+        boolean forced = !canAct();
         acted = true;
-        passed = true;
+        passed = forced;
         return endTurn();
     }
 
-    // End the turn: give a noble, check if the game is over, then move to the next player.
-    // Returns false if: no action yet, tokens still need to be returned,
-    // or the player must first choose between 2+ nobles.
+    // End the turn: check if the game is over, then move to the next player.
+    // Returns false if there was no action yet, or tokens still need to be returned.
     public boolean endTurn() {
         if (!canEndTurn()) return false;
 
-        // 1. a noble visits if exactly one qualifies (with 2+, the player chose already with claimNoble)
-        if (!nobleClaimed) {
-            Array<NobleInfo> available = getAvailableNobles();
-            if (available.size == 1) {
-                claimNoble(available.first());
-            }
-        }
-
-        // 2. reaching 15 points starts the final round
-        if (state.current().score() >= GameState.WIN_POINTS) {
+        // 1. house rule: when no card is left on the board or in the decks, finish this round
+        if (!anyCardLeft()) {
             state.finalRound = true;
         }
 
-        // 3. count passes in a row (any real move starts the count again)
+        // 2. count passes in a row (any real move starts the count again)
         if (passed) {
             passesInRow++;
         } else {
             passesInRow = 0;
         }
 
-        // 4. end the game, or move on to the next player
+        // 3. end the game, or move on to the next player
         boolean lastInRound = state.currentPlayer == state.players.size - 1;
         if (state.finalRound && lastInRound) {
             state.gameOver = true;                  // everyone has had the same number of turns
@@ -254,7 +253,6 @@ public class GameManager {
     // Clear the turn flags for the player whose turn it is now.
     private void startNewTurn() {
         acted = false;
-        nobleClaimed = false;
         bought = false;
         passed = false;
         tokensReturned = 0;

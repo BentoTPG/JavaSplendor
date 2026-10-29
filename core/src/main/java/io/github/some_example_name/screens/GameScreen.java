@@ -32,6 +32,7 @@ import io.github.some_example_name.ui.DeckView;
 import io.github.some_example_name.ui.Fonts;
 import io.github.some_example_name.ui.GemBankView;
 import io.github.some_example_name.ui.Gfx;
+import io.github.some_example_name.ui.NobleActionOverlay;
 import io.github.some_example_name.ui.NobleView;
 import io.github.some_example_name.ui.OtherPlayerCard;
 import io.github.some_example_name.ui.OutlinedLabel;
@@ -52,8 +53,8 @@ import io.github.some_example_name.ui.UiStyles;
  *   click a deck tile              = reserve the top card of that deck (face down)
  *   click your own reserved card   = buy it (or look at it when you cannot afford it)
  *   click your own gems            = give a token back (only while tokens are owed)
- *   click a noble                  = claim it (when you may choose between several)
- *   [End turn] / [Pass] buttons    = gm.endTurn() / gm.pass() (Pass only when no move is possible)
+ *   click a noble                  = window with [Buy] [Cancel] (buying a noble is the action of the turn)
+ *   [End turn] / [Pass] buttons    = gm.endTurn() / gm.pass() (Pass skips the turn, any time before acting)
  *   ESC                            = clear the gems picked so far
  */
 public class GameScreen extends ScreenAdapter {
@@ -328,6 +329,17 @@ public class GameScreen extends ScreenAdapter {
         refresh();
     }
 
+    /** The window with [Buy] [Cancel] for a noble on the board. */
+    private void openNobleWindow(final NobleInfo noble) {
+        stage.addActor(new NobleActionOverlay(noble, game.canBuyNoble(noble), big, small,
+                new Runnable() {
+                    @Override public void run() {
+                        if (!game.buyNoble(noble)) Gdx.app.log("Game", "cannot buy noble " + noble.id);
+                        refresh();
+                    }
+                }));
+    }
+
     /** Nobles still on the board; the label counts the nobles left in the pile. */
     private void buildNobles() {
         noblesTable.clearChildren();
@@ -336,10 +348,7 @@ public class GameScreen extends ScreenAdapter {
         for (final NobleInfo noble : state.nobles) {
             NobleView view = new NobleView(noble, big, small);
             view.onClick = new Runnable() {
-                @Override public void run() {
-                    if (!game.claimNoble(noble)) Gdx.app.log("Game", "cannot claim noble " + noble.id);
-                    refresh();
-                }
+                @Override public void run() { openNobleWindow(noble); }
             };
             noblesTable.add(view).size(NobleView.SIZE).pad(4).row();
         }
@@ -352,7 +361,7 @@ public class GameScreen extends ScreenAdapter {
         boolean canTake = pending.size > 0 && game.canTakeTokens(pendingArray());
         pickButton.setDisabled(over || game.hasActed() || !canTake);
         endTurnButton.setDisabled(over || !game.canEndTurn());
-        passButton.setDisabled(over || game.hasActed() || game.canAct());
+        passButton.setDisabled(!game.canPass());                // house rule: skip the turn at any time
 
         if (over) {
             StringBuilder sb = new StringBuilder("Game over - winner: ");
@@ -378,10 +387,15 @@ public class GameScreen extends ScreenAdapter {
             }
         } else if (game.tokensToDiscard() > 0) {
             text += "Return " + game.tokensToDiscard() + " token(s): click your own gems.";
-        } else if (game.needsNobleChoice()) {
-            text += "Click a noble to claim.";
         } else if (game.canEndTurn()) {
             text += "Press End turn.";
+        }
+        if (state.finalRound) {
+            text = "Last round: every card is gone.  " + text;
+        }
+        if (hint != null) {
+            text = hint + "  " + text;
+            hint = null;
         }
         statusLabel.setText(text);
     }
