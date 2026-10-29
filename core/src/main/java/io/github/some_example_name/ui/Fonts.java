@@ -11,7 +11,7 @@ import com.badlogic.gdx.graphics.g2d.freetype.FreeTypeFontGenerator.FreeTypeFont
 /** Builds the big number font from a TTF file at the size it is shown, so it stays sharp. */
 public final class Fonts {
     private Fonts() {}
-    public static String TestFontOnly = "fonts/Vidaloka-Regular.ttf";
+    public static String TestFontOnly = "fonts/JockeyOne-Regular.ttf"; //
     public static BitmapFont createBigNumberFont() {
     	
         FreeTypeFontGenerator gen = new FreeTypeFontGenerator(Gdx.files.internal(TestFontOnly)); //"fonts/NewRocker-Regular.ttf"
