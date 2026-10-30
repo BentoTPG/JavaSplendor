@@ -236,12 +236,12 @@ public class GameScreen extends ScreenAdapter {
         for (int tier = GameState.TIERS; tier >= 1; tier--) {
             final int t = tier;
             DeckView deck = new DeckView("Lv " + tier, state.deck(tier).size(), big, small);
-            deck.addListener(new ClickListener() {
+            /*deck.addListener(new ClickListener() {
                 @Override public void clicked(InputEvent event, float x, float y) {
                     if (!game.reserveFromDeck(t)) Gdx.app.log("Game", "cannot reserve from deck " + t);
                     refresh();
                 }
-            });
+            });*/
             marketTable.add(deck).size(CardView.W, CardView.H).pad(6);
 
             for (final CardInfo card : state.row(tier)) {
