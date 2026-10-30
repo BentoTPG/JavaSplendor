@@ -7,12 +7,14 @@ import com.badlogic.gdx.graphics.g2d.BitmapFont;
 import com.badlogic.gdx.graphics.g2d.freetype.FreeTypeFontGenerator;
 import com.badlogic.gdx.graphics.g2d.freetype.FreeTypeFontGenerator.FreeTypeFontParameter;
 
+
 /** Builds the big number font from a TTF file at the size it is shown, so it stays sharp. */
 public final class Fonts {
     private Fonts() {}
-
+    public static String TestFontOnly = "fonts/JockeyOne-Regular.ttf"; //
     public static BitmapFont createBigNumberFont() {
-        FreeTypeFontGenerator gen = new FreeTypeFontGenerator(Gdx.files.internal("fonts/NewRocker-Regular.ttf"));
+    	
+        FreeTypeFontGenerator gen = new FreeTypeFontGenerator(Gdx.files.internal(TestFontOnly)); //"fonts/NewRocker-Regular.ttf"
         try {
             FreeTypeFontParameter p = new FreeTypeFontParameter();
             p.size = 52;
@@ -33,7 +35,7 @@ public final class Fonts {
     }
     
     public static BitmapFont createSmallNumberFont() {
-        FreeTypeFontGenerator gen = new FreeTypeFontGenerator(Gdx.files.internal("fonts/JockeyOne-Regular.ttf"));
+        FreeTypeFontGenerator gen = new FreeTypeFontGenerator(Gdx.files.internal(TestFontOnly)); //"fonts/JockeyOne-Regular.ttf"
         try {
             FreeTypeFontParameter p = new FreeTypeFontParameter();
             p.size = 32;
@@ -55,7 +57,7 @@ public final class Fonts {
 
     /** Captions such as "Gems", "Cards", "Reserved" and "Total" on the player panels. */
     public static BitmapFont createCaptionFont() {
-        FreeTypeFontGenerator gen = new FreeTypeFontGenerator(Gdx.files.internal("fonts/JockeyOne-Regular.ttf"));
+        FreeTypeFontGenerator gen = new FreeTypeFontGenerator(Gdx.files.internal(TestFontOnly)); //"fonts/JockeyOne-Regular.ttf"
         try {
             FreeTypeFontParameter p = new FreeTypeFontParameter();
             p.size = 22;

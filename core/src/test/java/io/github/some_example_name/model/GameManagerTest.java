@@ -62,11 +62,14 @@ public class GameManagerTest {
     }
 
     @Test
-    public void twoOfOneColourNeedsFourInTheBank() {
+    public void twoOfOneColourNeedsTwoInTheBank() {
         GameManager gm = game();                                // 2 players: 4 of each colour
         assertTrue(gm.takeTokens(Gem.RED, Gem.RED));
         assertTrue(gm.endTurn());
-        assertFalse(gm.canTakeTokens(Gem.RED, Gem.RED));        // only 2 red left
+        assertTrue(gm.canTakeTokens(Gem.RED, Gem.RED));         // house rule: 2 red left is still enough
+        assertTrue(gm.takeTokens(Gem.RED, Gem.RED));
+        assertTrue(gm.endTurn());
+        assertFalse(gm.canTakeTokens(Gem.RED, Gem.RED));        // no red left
         assertFalse(gm.canTakeTokens(Gem.GOLD, Gem.WHITE, Gem.BLUE));
     }
 
@@ -163,63 +166,141 @@ public class GameManagerTest {
         assertEquals(before - 1, gm.state.deck(3).size());
     }
 
-    // ---- nobles and end of game ----
+    // ---- nobles and end of game (house rules) ----
 
     @Test
-    public void nobleVisitsAtTheEndOfTheTurn() {
+    public void buyingANobleIsTheActionOfTheTurn() {
+        NobleInfo red = noble(50, 0, 0, 0, 2, 0);                // needs 2 red cards
         Array<NobleInfo> nobles = farNobles(2);
-        nobles.add(noble(50, 0, 0, 0, 2, 0));                   // needs 2 red cards
+        nobles.add(red);
         GameManager gm = new GameManager(GameState.newGame(2, catalog(nobles)));   // 2 players: all 3 are drawn
         Player p = gm.state.current();
         p.addCard(card(1, 1, 1, Gem.RED));
         p.addCard(card(2, 1, 1, Gem.RED));
 
-        assertTrue(gm.takeTokens(Gem.WHITE, Gem.BLUE, Gem.GREEN));
-        assertTrue(gm.endTurn());
+        assertTrue(gm.canBuyNoble(red));
+        assertTrue(gm.buyNoble(red));
         assertEquals(1, p.nobles.size);
+        assertEquals(2, p.cards.size);                          // the bonus cards are kept, nothing is paid
         assertEquals(5, p.score());                             // 1 + 1 + 3 for the noble
         assertEquals(2, gm.state.nobles.size);
+        assertFalse(gm.takeTokens(Gem.WHITE, Gem.BLUE, Gem.GREEN)); // only one action per turn
+        assertTrue(gm.endTurn());
     }
 
     @Test
-    public void twoNoblesAtOnceNeedAChoice() {
+    public void aBoughtNobleIsReplacedFromThePile() {
+        GameState s = GameState.newGame(2, catalog(farNobles(5)));   // 2 players: 3 on the board, 2 in the pile
         NobleInfo red = noble(50, 0, 0, 0, 2, 0);
-        NobleInfo black = noble(51, 0, 0, 0, 0, 2);
-        Array<NobleInfo> nobles = farNobles(1);
+        s.nobles.set(0, red);                                   // the first noble on the board needs 2 red cards
+        GameManager gm = new GameManager(s);
+        Player p = s.current();
+        p.addCard(card(1, 1, 0, Gem.RED));
+        p.addCard(card(2, 1, 0, Gem.RED));
+
+        assertTrue(gm.buyNoble(red));
+        assertFalse(s.nobles.contains(red, true));
+        assertEquals(3, s.nobles.size);                         // a new noble from the pile took its place
+        assertEquals(1, s.catalog.nobles.size());
+    }
+
+    @Test
+    public void lastNobleIsNotReplacedWhenThePileIsEmpty() {
+        NobleInfo red = noble(50, 0, 0, 0, 2, 0);
+        Array<NobleInfo> nobles = farNobles(2);
         nobles.add(red);
-        nobles.add(black);
+        GameState s = GameState.newGame(2, catalog(nobles));    // 2 players: all 3 on the board, pile empty
+        GameManager gm = new GameManager(s);
+        Player p = s.current();
+        p.addCard(card(1, 1, 0, Gem.RED));
+        p.addCard(card(2, 1, 0, Gem.RED));
+
+        assertTrue(gm.buyNoble(red));
+        assertEquals(2, s.nobles.size);                         // nothing left to draw
+    }
+
+    @Test
+    public void nobleNeedsTheCardBonuses() {
+        GameManager gm = game();
+        NobleInfo far = gm.state.nobles.first();                // needs 9 white cards
+        assertFalse(gm.canBuyNoble(far));
+        assertFalse(gm.buyNoble(far));
+        assertFalse(gm.hasActed());
+    }
+
+    @Test
+    public void noblesNoLongerVisitByThemselves() {
+        Array<NobleInfo> nobles = farNobles(2);
+        nobles.add(noble(50, 0, 0, 0, 2, 0));
         GameManager gm = new GameManager(GameState.newGame(2, catalog(nobles)));
         Player p = gm.state.current();
         p.addCard(card(1, 1, 0, Gem.RED));
         p.addCard(card(2, 1, 0, Gem.RED));
-        p.addCard(card(3, 1, 0, Gem.BLACK));
-        p.addCard(card(4, 1, 0, Gem.BLACK));
 
         assertTrue(gm.takeTokens(Gem.WHITE, Gem.BLUE, Gem.GREEN));
-        assertTrue(gm.needsNobleChoice());
-        assertFalse(gm.endTurn());
-        assertTrue(gm.claimNoble(black));
-        assertFalse(gm.claimNoble(red));                        // one noble per turn
         assertTrue(gm.endTurn());
-        assertSame(black, p.nobles.first());
+        assertEquals(0, p.nobles.size);                         // qualifies, but did not buy it
+        assertEquals(3, gm.state.nobles.size);
     }
 
     @Test
-    public void fifteenPointsEndsTheGameAfterTheRound() {
+    public void fifteenPointsNoLongerEndsTheGame() {
         GameManager gm = game();
-        Player first = gm.state.current();
         for (int i = 1; i <= 3; i++) {
-            first.addCard(card(i, 3, 5, Gem.BLACK));            // 15 points
+            gm.state.current().addCard(card(i, 3, 5, Gem.BLACK));   // 15 points
         }
         assertTrue(gm.takeTokens(Gem.WHITE, Gem.BLUE, Gem.GREEN));
         assertTrue(gm.endTurn());
-        assertTrue(gm.state.finalRound);
+        assertFalse(gm.state.finalRound);
+    }
+
+    @Test
+    public void lastCardEndsTheGameAfterTheRound() {
+        GameManager gm = game();
+        GameState s = gm.state;
+        for (int tier = 1; tier <= GameState.TIERS; tier++) {
+            s.deck(tier).draw(s.deck(tier).size());             // empty every deck
+            if (tier > 1) s.row(tier).clear();                  // and the level 2 and 3 rows
+        }
+        s.row(1).truncate(1);                                   // one card left on the whole board
+        Player first = s.current();
+        first.addToken(Gem.BLUE, 2);                            // the level-1 test card costs 2 blue
+
+        assertTrue(gm.buyCard(s.row(1).first()));
+        assertTrue(gm.endTurn());
+        assertTrue(s.finalRound);
         assertFalse(gm.checkGameOver());                        // the second player still gets a turn
 
         assertTrue(gm.takeTokens(Gem.WHITE, Gem.BLUE, Gem.GREEN));
         assertTrue(gm.endTurn());
         assertTrue(gm.checkGameOver());
-        assertSame(first, gm.state.winner());
+    }
+
+    // ---- passing (house rule) ----
+
+    @Test
+    public void passIsAllowedAnyTimeBeforeActing() {
+        GameManager gm = game();
+        assertTrue(gm.canAct());                                // the player could still move
+        assertTrue(gm.pass());                                  // skip the turn by choice
+        assertEquals(1, gm.state.currentPlayer);
+        assertTrue(gm.pass());
+        assertTrue(gm.pass());
+        assertFalse(gm.state.gameOver);                         // passes by choice never end the game
+        assertTrue(gm.takeTokens(Gem.RED, Gem.BLUE, Gem.GREEN));
+        assertFalse(gm.pass());                                 // no pass after the action
+    }
+
+    @Test
+    public void passByChoiceWithSevenTokensStillPaysThePenalty() {
+        GameState s = GameState.newGame(2, catalog(farNobles(5)));
+        s.current().addToken(Gem.BLACK, 7);                     // 7+ tokens when the turn starts
+        GameManager gm = new GameManager(s);
+
+        assertFalse(gm.pass());                                 // the turn cannot end yet...
+        assertEquals(4, gm.tokensToDiscard());                  // ...4 tokens must go back first
+        for (int i = 0; i < 4; i++) assertTrue(gm.returnToken(Gem.BLACK));
+        assertTrue(gm.endTurn());
     }
 
     // ---- test data ----

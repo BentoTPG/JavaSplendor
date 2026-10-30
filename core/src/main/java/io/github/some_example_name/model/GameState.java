@@ -10,7 +10,6 @@ import io.github.some_example_name.data.DrawPile;
 import io.github.some_example_name.data.NobleInfo;
 
 public class GameState {
-    public static final int WIN_POINTS = 15;
     public static final int TIERS = 3;                  // card levels 1, 2, 3
     public static final int FACE_UP_PER_TIER = 3;       // cards shown per level (same as GameScreen.FACE_UP_PER_LEVEL)
     public static final int MAX_NOBLES = 4;             // the screen has room for 4 nobles (GameScreen.NOBLES_SHOWN)
@@ -26,7 +25,7 @@ public class GameState {
     public final EnumMap<Gem, Integer> bank = new EnumMap<>(Gem.class);
 
     public int currentPlayer;
-    public boolean finalRound;      // someone reached WIN_POINTS; finish the round
+    public boolean finalRound;      // the last card was bought; finish the round (house rule)
     public boolean gameOver;
 
     // private: make a game with GameState.newGame(...) below, not with "new GameState".

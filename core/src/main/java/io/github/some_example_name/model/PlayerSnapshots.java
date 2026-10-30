@@ -1,5 +1,6 @@
 package io.github.some_example_name.model;
 
+import io.github.some_example_name.data.CardInfo;
 import io.github.some_example_name.ui.PlayerSnapshot;
 
 // Fills the player panels' display data (ui.PlayerSnapshot) from the real players.
@@ -26,6 +27,9 @@ public class PlayerSnapshots {
             s.bonuses.put(gem, p.bonus(gem));
         }
         s.reserved.addAll(p.reserved);
+        for (CardInfo c : p.reserved) {
+            if (p.isHidden(c)) s.hidden.add(c);         // so the screen can draw a card back for other players
+        }
         return s;
     }
 }
